@@ -429,9 +429,9 @@ Waterfall spectrum yang menunjukkan perubahan sinyal terhadap waktu.
 | Signal Propagation Models | ✅ Selesai |
 | Unit Tests (6 test suite) | ✅ Selesai |
 | Flutter App (Mobile) - Struktur Dasar | ✅ Selesai |
-| Flutter App (Mobile) - Services & Backend | 🔄 Sedang Berjalan |
-| Testing & Dokumentasi | 🔄 Sedang Berjalan |
-| Mode Rekam Jalan Langsung | 📋 Direncanakan |
+| Flutter App (Mobile) - Services & Backend | ✅ Selesai |
+| Testing & Dokumentasi | ✅ Selesai |
+| Mode Rekam Jalan Langsung | ✅ Selesai |
 | Pengajuan Paten / Hak Cipta | 📋 Direncanakan |
 
 ---
