@@ -28,9 +28,13 @@
 
 | Output | Deskripsi |
 |--------|-----------|
+| 🖥️ **GUI Desktop** | Aplikasi PyQt5 dengan dark theme, 6 tab visualisasi interaktif |
 | 🗺️ **Peta Panas 2D** | Distribusi kekuatan sinyal di suatu ruangan (merah = kuat, biru = lemah) |
 | 🏔️ **Model Permukaan 3D** | "Medan frekuensi" yang menunjukkan area dengan sinyal terbaik dan terburuk |
 | 📊 **Peta Spasial** | Analisis ruangan untuk penempatan router yang optimal |
+| 📈 **Spectrum Analyzer** | Analisis spektrum frekuensi, penggunaan kanal, waterfall real-time |
+| 📡 **Signal Propagation** | Model propagasi sinyal (path loss, coverage, gradient, multi-AP) |
+| 🔴 **Realtime Monitor** | Monitoring kekuatan sinyal secara langsung |
 
 ---
 
@@ -44,6 +48,7 @@ Proyek ini lahir dari sebuah pertanyaan sederhana namun mendalam:
 - Peta panas 2D
 - Model permukaan 3D
 - Peta spasial frekuensi
+- Analisis spektrum & propagasi sinyal
 
 Semua ini dapat dicapai hanya dengan **WiFi adapter standar** dan **Python** — tanpa perlu perangkat keras khusus.
 
@@ -52,12 +57,12 @@ Semua ini dapat dicapai hanya dengan **WiFi adapter standar** dan **Python** —
 ## 🔬 Bagaimana Cara Kerjanya?
 
 ```
-┌─────────────┐     ┌─────────────┐     ┌─────────────┐     ┌─────────────┐
-│ Pemindaian  │     │  Data RSSI  │     │ Interpolasi │     │  Visualisasi│
-│    WiFi     │ ──► │ + Posisi    │ ──► │    IDW      │ ──► │   2D / 3D   │
-│ (pywifiscan)│     │ (x,y)       │     │ + KNN       │     │ (Plotly,    │
-└─────────────┘     └─────────────┘     └─────────────┘     │ Matplotlib) │
-                                                            └─────────────┘
+┌─────────────┐     ┌─────────────┐     ┌─────────────┐     ┌──────────────────┐
+│ Pemindaian  │     │  Data RSSI  │     │ Interpolasi │     │   Visualisasi    │
+│    WiFi     │ ──► │ + Posisi    │ ──► │    IDW      │ ──► │  GUI / CLI       │
+│ (pywifiscan)│     │ (x,y)       │     │ + KNN       │     │  (PyQt5/Plotly/  │
+└─────────────┘     └─────────────┘     └─────────────┘     │   Matplotlib)    │
+                                                            └──────────────────┘
 ```
 
 | Langkah | Deskripsi | Teknologi |
@@ -65,7 +70,36 @@ Semua ini dapat dicapai hanya dengan **WiFi adapter standar** dan **Python** —
 | 1 | Pindai jaringan WiFi, dapatkan nilai RSSI | `pywifiscan` / `netsh` / `iwlist` |
 | 2 | Catat posisi (X,Y) dan kekuatan sinyal saat berjalan | Input manual / file CSV/JSON |
 | 3 | Interpolasi titik yang tidak terukur menggunakan IDW + KNN | NumPy, SciPy (cKDTree) |
-| 4 | Visualisasikan hasilnya sebagai peta panas atau permukaan 3D | Matplotlib, Plotly |
+| 4 | Visualisasikan hasilnya melalui GUI atau CLI | PyQt5, Matplotlib, Plotly |
+
+---
+
+## 🖥️ GUI Application (PyQt5)
+
+SpectraLens kini hadir dengan **antarmuka grafis (GUI)** berbasis PyQt5 dengan tema gelap modern:
+
+### Tampilan GUI
+
+| Tab | Deskripsi |
+|-----|-----------|
+| **Heatmap** | Peta panas 2D distribusi sinyal WiFi |
+| **3D Surface** | Model permukaan 3D interaktif |
+| **Spectrum Analyzer** | Analisis spektrum frekuensi & waterfall |
+| **Signal Propagation** | Model propagasi sinyal (4 visualisasi) |
+| **Realtime** | Monitoring kekuatan sinyal secara langsung |
+| **About** | Informasi tentang aplikasi |
+
+### Menjalankan GUI
+
+```bash
+python main.py gui
+```
+
+Atau langsung:
+
+```bash
+python -m gui.app
+```
 
 ---
 
@@ -91,6 +125,7 @@ Parameter yang dapat disesuaikan:
 | Kategori | Teknologi |
 |----------|-----------|
 | Bahasa | Python 3.8+ |
+| GUI Framework | PyQt5 (Qt5) |
 | Pemindaian WiFi | pywifiscan, netsh (Windows), iwlist (Linux), airport (macOS) |
 | Komputasi Numerik | numpy, scipy (cKDTree) |
 | Visualisasi 2D | matplotlib, seaborn |
@@ -106,9 +141,14 @@ Parameter yang dapat disesuaikan:
 ```
 spectralens/
 │
-├── main.py                    # Titik masuk utama (CLI)
+├── main.py                    # Titik masuk utama (CLI + GUI)
 ├── requirements.txt           # Dependencies
 ├── checklist.md               # Progress checklist
+│
+├── gui/                       # Aplikasi GUI (PyQt5)
+│   ├── __init__.py
+│   ├── app.py                 # Entry point GUI
+│   └── main_window.py         # Main window dengan tabs
 │
 ├── scanner/                   # Akuisisi data WiFi
 │   ├── __init__.py
@@ -123,7 +163,10 @@ spectralens/
 ├── visualization/             # Pembuatan output visual
 │   ├── __init__.py
 │   ├── heatmap_2d.py          # Peta panas 2D (contourf + scatter)
-│   └── surface_3d.py          # Plot permukaan 3D (static + interactive)
+│   ├── surface_3d.py          # Plot permukaan 3D (static + interactive)
+│   ├── spectrum_analyzer.py   # Analisis spektrum frekuensi
+│   ├── signal_propagation.py  # Model propagasi sinyal
+│   └── realtime.py            # Monitoring real-time
 │
 ├── storage/                   # Penyimpanan data
 │   ├── __init__.py
@@ -133,8 +176,20 @@ spectralens/
 │   ├── __init__.py
 │   └── geometry.py            # Perhitungan jarak, bounding box, RSSI conversion
 │
-└── data/                      # Data sample
-    └── sample_measurements.csv # Contoh data pengukuran untuk testing
+├── data/                      # Data sample
+│   └── sample_measurements.csv # Contoh data pengukuran untuk testing
+│
+└── output/                    # Hasil visualisasi
+    ├── heatmap_15points.png
+    ├── surface_3d_50x50.png
+    ├── gui_heatmap.png
+    ├── gui_surface_3d.png
+    ├── path_loss_comparison_2412mhz.png
+    ├── gradient_vectors_50x50.png
+    ├── multi_ap_overlay_1aps.png
+    ├── channel_util_7nets.png
+    ├── spectrum_bar_7nets.png
+    └── waterfall_2.4ghz_6steps.png
 ```
 
 ---
@@ -161,69 +216,41 @@ source venv/bin/activate  # Di Windows: venv\Scripts\activate
 # 3. Install dependencies
 pip install -r requirements.txt
 
-# 4. Jalankan aplikasi
+# 4. Jalankan aplikasi (GUI)
+python main.py gui
+
+# Atau via CLI
 python main.py --help
 ```
 
 ---
 
-## 📝 Panduan Penggunaan CLI
+## 📝 Panduan Penggunaan
 
-### Melihat Bantuan
+### GUI Mode (Rekomendasi)
 
 ```bash
-python main.py --help
-python main.py scan --help
-python main.py visualize --help
+# Jalankan aplikasi GUI
+python main.py gui
 ```
 
-### Memindai Jaringan WiFi
+### CLI Mode
 
 ```bash
-# Pindai semua jaringan WiFi di sekitar
+# Melihat bantuan
+python main.py --help
+
+# Memindai jaringan WiFi
 python main.py scan
 
-# Pindai dengan SSID spesifik
-python main.py scan --ssid MyWiFi
+# Visualisasi data dari file CSV
+python main.py visualize data/sample_measurements.csv --type all
 
-# Simpan hasil scan ke file
-python main.py scan --output scan_results.csv
-```
-
-### Visualisasi Data dari File CSV
-
-```bash
-# Generate heatmap 2D dari data sample
+# Generate heatmap 2D
 python main.py visualize data/sample_measurements.csv --type heatmap
 
 # Generate 3D surface
 python main.py visualize data/sample_measurements.csv --type surface
-
-# Generate heatmap dengan resolusi grid lebih tinggi
-python main.py visualize data/sample_measurements.csv --type heatmap --resolution 100
-
-# Generate dengan parameter IDW yang berbeda
-python main.py visualize data/sample_measurements.csv --type heatmap --power 3 --k 8
-
-# Generate semua jenis visualisasi sekaligus
-python main.py visualize data/sample_measurements.csv --type all
-
-# Tentukan nama file output
-python main.py visualize data/sample_measurements.csv --type heatmap --output my_heatmap.png
-```
-
-### Mengelola Database
-
-```bash
-# Lihat statistik database
-python main.py db-stats
-```
-
-### Contoh Sederhana
-
-```bash
-# Langsung generate heatmap dari sample data
-python main.py visualize data/sample_measurements.csv --type all
 ```
 
 Output akan tersimpan di folder `output/`:
@@ -233,9 +260,10 @@ Output akan tersimpan di folder `output/`:
 
 ---
 
-## 📊 Contoh Output
+## 📊 Contoh Output Visualisasi
 
 ### Peta Panas 2D
+![Heatmap](output/heatmap_15points.png)
 
 Peta panas menunjukkan distribusi kekuatan sinyal WiFi di suatu area:
 - **Merah** = Sinyal kuat (RSSI tinggi, mendekati -30 dBm)
@@ -244,11 +272,51 @@ Peta panas menunjukkan distribusi kekuatan sinyal WiFi di suatu area:
 - **Garis kontur** = Batas area dengan kekuatan sinyal yang sama
 
 ### Permukaan 3D
+![Surface 3D](output/surface_3d_50x50.png)
 
 Visualisasi 3D menunjukkan "medan frekuensi":
 - **Puncak** = Area dengan sinyal terbaik
 - **Lembah** = Area dengan sinyal terburuk
-- Dapat diputar dan diperbesar (versi interaktif Plotly HTML)
+
+### GUI Heatmap
+![GUI Heatmap](output/gui_heatmap.png)
+
+Tampilan heatmap dalam aplikasi GUI PyQt5.
+
+### GUI Surface 3D
+![GUI Surface 3D](output/gui_surface_3d.png)
+
+Tampilan permukaan 3D dalam aplikasi GUI PyQt5.
+
+### Path Loss Comparison
+![Path Loss](output/path_loss_comparison_2412mhz.png)
+
+Perbandingan model propagasi sinyal (FSPL, Log-Distance n=2.0/3.0/3.5).
+
+### Gradient Vectors
+![Gradient](output/gradient_vectors_50x50.png)
+
+Medan gradien sinyal yang menunjukkan arah perubahan kekuatan sinyal.
+
+### Multi-AP Overlay
+![Multi-AP](output/multi_ap_overlay_1aps.png)
+
+Visualisasi coverage dari beberapa Access Point secara bersamaan.
+
+### Channel Utilization
+![Channel Util](output/channel_util_7nets.png)
+
+Penggunaan kanal frekuensi oleh jaringan WiFi di sekitar.
+
+### Spectrum Bar
+![Spectrum Bar](output/spectrum_bar_7nets.png)
+
+Distribusi spektrum frekuensi dalam bentuk bar chart.
+
+### Waterfall
+![Waterfall](output/waterfall_2.4ghz_6steps.png)
+
+Waterfall spectrum yang menunjukkan perubahan sinyal terhadap waktu.
 
 ---
 
@@ -260,6 +328,9 @@ Visualisasi 3D menunjukkan "medan frekuensi":
 | Desain Algoritma IDW | ✅ Selesai |
 | Implementasi Python (dasar) | ✅ Selesai |
 | Implementasi Python (lengkap) | ✅ Selesai |
+| GUI Desktop (PyQt5) | ✅ Selesai |
+| Spectrum Analyzer | ✅ Selesai |
+| Signal Propagation Models | ✅ Selesai |
 | Testing & Dokumentasi | 🔄 Sedang Berjalan |
 | Porting ke Flutter (Mobile) | 📋 Direncanakan |
 | Mode Rekam Jalan Langsung | 📋 Direncanakan |
