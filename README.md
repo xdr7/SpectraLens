@@ -4,6 +4,7 @@
 ![Python](https://img.shields.io/badge/python-3.8+-green)
 ![License](https://img.shields.io/badge/license-MIT-yellow)
 ![Status](https://img.shields.io/badge/status-active-brightgreen)
+![Flutter](https://img.shields.io/badge/flutter-in%20progress-blueviolet)
 
 > **Mewujudkan Frekuensi WiFi Menjadi Bentuk Visual**  
 > *"Making the invisible visible, one frequency at a time."*
@@ -28,13 +29,15 @@
 
 | Output | Deskripsi |
 |--------|-----------|
-| 🖥️ **GUI Desktop** | Aplikasi PyQt5 dengan dark theme, 6 tab visualisasi interaktif |
+| 🖥️ **GUI Desktop (PyQt5)** | Aplikasi desktop dengan dark theme, 6 tab visualisasi interaktif |
+| 📱 **Flutter App (Mobile)** | Aplikasi cross-platform Android/iOS (dalam pengembangan) |
 | 🗺️ **Peta Panas 2D** | Distribusi kekuatan sinyal di suatu ruangan (merah = kuat, biru = lemah) |
 | 🏔️ **Model Permukaan 3D** | "Medan frekuensi" yang menunjukkan area dengan sinyal terbaik dan terburuk |
 | 📊 **Peta Spasial** | Analisis ruangan untuk penempatan router yang optimal |
 | 📈 **Spectrum Analyzer** | Analisis spektrum frekuensi, penggunaan kanal, waterfall real-time |
 | 📡 **Signal Propagation** | Model propagasi sinyal (path loss, coverage, gradient, multi-AP) |
 | 🔴 **Realtime Monitor** | Monitoring kekuatan sinyal secara langsung |
+| 🧪 **Unit Tests** | 6 test suite untuk validasi komponen inti |
 
 ---
 
@@ -62,7 +65,7 @@ Semua ini dapat dicapai hanya dengan **WiFi adapter standar** dan **Python** —
 │    WiFi     │ ──► │ + Posisi    │ ──► │    IDW      │ ──► │  GUI / CLI       │
 │ (pywifiscan)│     │ (x,y)       │     │ + KNN       │     │  (PyQt5/Plotly/  │
 └─────────────┘     └─────────────┘     └─────────────┘     │   Matplotlib)    │
-                                                            └──────────────────┘
+                                                             └──────────────────┘
 ```
 
 | Langkah | Deskripsi | Teknologi |
@@ -76,17 +79,20 @@ Semua ini dapat dicapai hanya dengan **WiFi adapter standar** dan **Python** —
 
 ## 🖥️ GUI Application (PyQt5)
 
-SpectraLens kini hadir dengan **antarmuka grafis (GUI)** berbasis PyQt5 dengan tema gelap modern:
+SpectraLens hadir dengan **antarmuka grafis (GUI)** berbasis PyQt5 dengan tema gelap modern:
 
 ### Tampilan GUI
 
 | Tab | Deskripsi |
 |-----|-----------|
-| **Heatmap** | Peta panas 2D distribusi sinyal WiFi |
-| **3D Surface** | Model permukaan 3D interaktif |
+| **Dashboard** | Overview sistem, quick actions, status koneksi |
+| **Scanner** | Scan WiFi networks, tabel detail, bar chart signal strength |
+| **Visualization** | Peta panas 2D + Model permukaan 3D interaktif |
+| **Data Collection** | Input manual titik pengukuran (x, y, signal) |
+| **Recording** | Sesi perekaman data pengukuran |
+| **Realtime** | Monitoring kekuatan sinyal secara langsung |
 | **Spectrum Analyzer** | Analisis spektrum frekuensi & waterfall |
 | **Signal Propagation** | Model propagasi sinyal (4 visualisasi) |
-| **Realtime** | Monitoring kekuatan sinyal secara langsung |
 | **About** | Informasi tentang aplikasi |
 
 ### Menjalankan GUI
@@ -100,6 +106,47 @@ Atau langsung:
 ```bash
 python -m gui.app
 ```
+
+---
+
+## 📱 Flutter App (Mobile - Dalam Pengembangan)
+
+SpectraLens sedang dikembangkan sebagai **aplikasi mobile cross-platform** menggunakan Flutter:
+
+### Struktur Flutter App
+
+```
+spectralens_app/
+├── pubspec.yaml
+└── lib/
+    ├── main.dart                    # Entry point
+    ├── models/
+    │   └── measurement.dart         # Model data
+    ├── providers/
+    │   ├── app_state.dart           # State management global
+    │   └── scan_provider.dart       # State management scan
+    ├── screens/
+    │   ├── dashboard_screen.dart    # Dashboard utama
+    │   ├── scanner_screen.dart      # Scanner WiFi
+    │   ├── heatmap_screen.dart      # Heatmap 2D
+    │   ├── data_collection_screen.dart # Input data
+    │   └── settings_screen.dart     # Pengaturan
+    ├── widgets/
+    │   ├── status_card.dart         # Kartu status
+    │   └── signal_gauge.dart        # Gauge sinyal
+    └── utils/
+        └── constants.dart           # Konstanta & tema
+```
+
+### Screens yang Tersedia
+
+| Screen | Deskripsi |
+|--------|-----------|
+| **Dashboard** | Ringkasan status, sinyal terkuat, jumlah AP terdeteksi |
+| **Scanner** | Scan WiFi dengan animasi, daftar jaringan, detail sinyal |
+| **Heatmap** | Visualisasi peta panas 2D (data dari Python backend) |
+| **Data Collection** | Form input titik pengukuran manual |
+| **Settings** | Konfigurasi aplikasi, tema, koneksi backend |
 
 ---
 
@@ -120,12 +167,36 @@ Parameter yang dapat disesuaikan:
 
 ---
 
+## 🧪 Unit Tests
+
+Terdapat **6 test suite** untuk memvalidasi komponen inti aplikasi:
+
+| Test File | Deskripsi |
+|-----------|-----------|
+| `test_data_collector.py` | Validasi koleksi data pengukuran |
+| `test_geometry.py` | Validasi perhitungan geometri & jarak |
+| `test_database.py` | Validasi operasi database SQLite |
+| `test_grid_builder.py` | Validasi pembuatan grid interpolasi |
+| `test_idw.py` | Validasi algoritma IDW |
+| `test_integration.py` | Validasi integrasi end-to-end |
+
+```bash
+# Jalankan semua test
+python -m pytest tests/ -v
+
+# Jalankan test spesifik
+python -m pytest tests/test_idw.py -v
+```
+
+---
+
 ## 🛠️ Teknologi yang Digunakan
 
 | Kategori | Teknologi |
 |----------|-----------|
-| Bahasa | Python 3.8+ |
-| GUI Framework | PyQt5 (Qt5) |
+| Bahasa | Python 3.8+, Dart (Flutter) |
+| GUI Framework (Desktop) | PyQt5 (Qt5) |
+| Mobile Framework | Flutter (dalam pengembangan) |
 | Pemindaian WiFi | pywifiscan, netsh (Windows), iwlist (Linux), airport (macOS) |
 | Komputasi Numerik | numpy, scipy (cKDTree) |
 | Visualisasi 2D | matplotlib, seaborn |
@@ -133,6 +204,7 @@ Parameter yang dapat disesuaikan:
 | Basis Data | sqlite3 (SQLite) |
 | CLI Framework | argparse |
 | Format Data | CSV, JSON |
+| Testing | pytest |
 
 ---
 
@@ -142,8 +214,9 @@ Parameter yang dapat disesuaikan:
 spectralens/
 │
 ├── main.py                    # Titik masuk utama (CLI + GUI)
-├── requirements.txt           # Dependencies
+├── requirements.txt           # Dependencies Python
 ├── checklist.md               # Progress checklist
+├── .gitignore                 # Git ignore rules
 │
 ├── gui/                       # Aplikasi GUI (PyQt5)
 │   ├── __init__.py
@@ -176,6 +249,25 @@ spectralens/
 │   ├── __init__.py
 │   └── geometry.py            # Perhitungan jarak, bounding box, RSSI conversion
 │
+├── tests/                     # Unit tests
+│   ├── __init__.py
+│   ├── test_data_collector.py
+│   ├── test_geometry.py
+│   ├── test_database.py
+│   ├── test_grid_builder.py
+│   ├── test_idw.py
+│   └── test_integration.py
+│
+├── spectralens_app/           # Flutter mobile app
+│   ├── pubspec.yaml
+│   └── lib/
+│       ├── main.dart
+│       ├── models/
+│       ├── providers/
+│       ├── screens/
+│       ├── widgets/
+│       └── utils/
+│
 ├── data/                      # Data sample
 │   └── sample_measurements.csv # Contoh data pengukuran untuk testing
 │
@@ -184,6 +276,7 @@ spectralens/
     ├── surface_3d_50x50.png
     ├── gui_heatmap.png
     ├── gui_surface_3d.png
+    ├── gui_interactive.html
     ├── path_loss_comparison_2412mhz.png
     ├── gradient_vectors_50x50.png
     ├── multi_ap_overlay_1aps.png
@@ -230,7 +323,7 @@ python main.py --help
 ### GUI Mode (Rekomendasi)
 
 ```bash
-# Jalankan aplikasi GUI
+# Jalankan aplikasi GUI dengan dark theme
 python main.py gui
 ```
 
@@ -251,12 +344,15 @@ python main.py visualize data/sample_measurements.csv --type heatmap
 
 # Generate 3D surface
 python main.py visualize data/sample_measurements.csv --type surface
+
+# Realtime monitoring
+python main.py realtime
 ```
 
 Output akan tersimpan di folder `output/`:
 - `output/heatmap_15points.png` — Peta panas 2D
 - `output/surface_3d_50x50.png` — Permukaan 3D static
-- `output/surface_3d_interactive_50x50.html` — Permukaan 3D interaktif
+- `output/gui_interactive.html` — Permukaan 3D interaktif (Plotly)
 
 ---
 
@@ -331,8 +427,10 @@ Waterfall spectrum yang menunjukkan perubahan sinyal terhadap waktu.
 | GUI Desktop (PyQt5) | ✅ Selesai |
 | Spectrum Analyzer | ✅ Selesai |
 | Signal Propagation Models | ✅ Selesai |
+| Unit Tests (6 test suite) | ✅ Selesai |
+| Flutter App (Mobile) - Struktur Dasar | ✅ Selesai |
+| Flutter App (Mobile) - Services & Backend | 🔄 Sedang Berjalan |
 | Testing & Dokumentasi | 🔄 Sedang Berjalan |
-| Porting ke Flutter (Mobile) | 📋 Direncanakan |
 | Mode Rekam Jalan Langsung | 📋 Direncanakan |
 | Pengajuan Paten / Hak Cipta | 📋 Direncanakan |
 
