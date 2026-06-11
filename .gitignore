@@ -31,6 +31,7 @@ measurements.json
 
 # Visualisasi output
 *.png
+!output/*.png
 *.jpg
 *.jpeg
 *.html
