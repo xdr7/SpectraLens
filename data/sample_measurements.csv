@@ -1,0 +1,16 @@
+x,y,rssi,ssid,note
+0.0,0.0,-65,MyWiFi,Center of room
+2.0,0.0,-58,MyWiFi,Near window
+4.0,0.0,-72,MyWiFi,Far corner
+0.0,2.0,-60,MyWiFi,Left wall
+2.0,2.0,-50,MyWiFi,Center near router
+4.0,2.0,-68,MyWiFi,Right wall
+0.0,4.0,-70,MyWiFi,Back left
+2.0,4.0,-55,MyWiFi,Back center
+4.0,4.0,-75,MyWiFi,Back right corner
+1.0,1.0,-55,MyWiFi,Between center and left
+3.0,1.0,-52,MyWiFi,Between center and right
+1.0,3.0,-62,MyWiFi,Left back area
+3.0,3.0,-58,MyWiFi,Right back area
+2.0,1.0,-48,MyWiFi,Closest to router
+2.0,3.0,-53,MyWiFi,Behind router position

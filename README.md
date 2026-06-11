@@ -52,21 +52,19 @@ Semua ini dapat dicapai hanya dengan **WiFi adapter standar** dan **Python** —
 ## 🔬 Bagaimana Cara Kerjanya?
 
 ```
-
 ┌─────────────┐     ┌─────────────┐     ┌─────────────┐     ┌─────────────┐
 │ Pemindaian  │     │  Data RSSI  │     │ Interpolasi │     │  Visualisasi│
 │    WiFi     │ ──► │ + Posisi    │ ──► │    IDW      │ ──► │   2D / 3D   │
 │ (pywifiscan)│     │ (x,y)       │     │ + KNN       │     │ (Plotly,    │
 └─────────────┘     └─────────────┘     └─────────────┘     │ Matplotlib) │
-└─────────────┘
-
+                                                            └─────────────┘
 ```
 
 | Langkah | Deskripsi | Teknologi |
 |---------|-----------|------------|
-| 1 | Pindai jaringan WiFi, dapatkan nilai RSSI | `pywifiscan` |
-| 2 | Catat posisi (X,Y) dan kekuatan sinyal saat berjalan | Input manual / file |
-| 3 | Interpolasi titik yang tidak terukur menggunakan IDW + KNN | NumPy, SciPy |
+| 1 | Pindai jaringan WiFi, dapatkan nilai RSSI | `pywifiscan` / `netsh` / `iwlist` |
+| 2 | Catat posisi (X,Y) dan kekuatan sinyal saat berjalan | Input manual / file CSV/JSON |
+| 3 | Interpolasi titik yang tidak terukur menggunakan IDW + KNN | NumPy, SciPy (cKDTree) |
 | 4 | Visualisasikan hasilnya sebagai peta panas atau permukaan 3D | Matplotlib, Plotly |
 
 ---
@@ -82,63 +80,74 @@ value = Σ(weight_i × rssi_i) / Σ(weight_i)
 ```
 
 Parameter yang dapat disesuaikan:
-
-· power = 2 — Mengontrol seberapa cepat pengaruh sinyal berkurang dengan jarak
-· k = 5 — Jumlah tetangga terdekat yang digunakan (KNN)
-
----
-
-🛠️ Teknologi yang Digunakan
-
-Kategori Teknologi
-Bahasa Python 3.8+
-Pemindaian WiFi pywifiscan / miniwifi
-Komputasi Numerik numpy, scipy
-Visualisasi 2D matplotlib, seaborn
-Visualisasi 3D plotly, pyvista
-Basis Data sqlite3
-Geometri scipy.spatial.cKDTree
+- **power** (default: 2) — Mengontrol seberapa cepat pengaruh sinyal berkurang dengan jarak
+- **k** (default: 5) — Jumlah tetangga terdekat yang digunakan (KNN)
+- **smoothing** (default: 1e-12) — Faktor smoothing untuk menghindari division by zero
 
 ---
 
-📁 Struktur Proyek (Rencana)
+## 🛠️ Teknologi yang Digunakan
+
+| Kategori | Teknologi |
+|----------|-----------|
+| Bahasa | Python 3.8+ |
+| Pemindaian WiFi | pywifiscan, netsh (Windows), iwlist (Linux), airport (macOS) |
+| Komputasi Numerik | numpy, scipy (cKDTree) |
+| Visualisasi 2D | matplotlib, seaborn |
+| Visualisasi 3D | plotly (interaktif), matplotlib (static) |
+| Basis Data | sqlite3 (SQLite) |
+| CLI Framework | argparse |
+| Format Data | CSV, JSON |
+
+---
+
+## 📁 Struktur Proyek
 
 ```
 spectralens/
 │
-├── main.py                    # Titik masuk utama
+├── main.py                    # Titik masuk utama (CLI)
 ├── requirements.txt           # Dependencies
+├── checklist.md               # Progress checklist
 │
 ├── scanner/                   # Akuisisi data WiFi
+│   ├── __init__.py
 │   ├── wifi_scanner.py        # Membaca RSSI dari adapter WiFi
 │   └── data_collector.py      # Merekam posisi + kekuatan sinyal
 │
 ├── interpolation/             # Interpolasi spasial
-│   ├── idw.py                 # Algoritma IDW
+│   ├── __init__.py
+│   ├── idw.py                 # Algoritma IDW dengan KNN optimization
 │   └── grid_builder.py        # Membuat grid untuk visualisasi
 │
 ├── visualization/             # Pembuatan output visual
-│   ├── heatmap_2d.py          # Peta panas 2D
-│   └── surface_3d.py          # Plot permukaan 3D
+│   ├── __init__.py
+│   ├── heatmap_2d.py          # Peta panas 2D (contourf + scatter)
+│   └── surface_3d.py          # Plot permukaan 3D (static + interactive)
 │
 ├── storage/                   # Penyimpanan data
-│   └── database.py            # Operasi SQLite
+│   ├── __init__.py
+│   └── database.py            # Operasi SQLite (sessions, data_points)
 │
-└── utils/                     # Fungsi bantuan
-    └── geometry.py            # Perhitungan jarak, koordinat
+├── utils/                     # Fungsi bantuan
+│   ├── __init__.py
+│   └── geometry.py            # Perhitungan jarak, bounding box, RSSI conversion
+│
+└── data/                      # Data sample
+    └── sample_measurements.csv # Contoh data pengukuran untuk testing
 ```
 
 ---
 
-🚀 Cara Memulai (Instalasi)
+## 🚀 Cara Memulai (Instalasi)
 
-Prasyarat
+### Prasyarat
 
-· Python 3.8 atau lebih baru
-· WiFi adapter (bawaan laptop/PC sudah cukup)
-· Hak akses Administrator/Root (untuk pemindaian WiFi di beberapa OS)
+- Python 3.8 atau lebih baru
+- WiFi adapter (bawaan laptop/PC sudah cukup)
+- Hak akses Administrator/Root (untuk pemindaian WiFi di beberapa OS)
 
-Langkah-langkah
+### Langkah-langkah
 
 ```bash
 # 1. Clone repository
@@ -153,75 +162,120 @@ source venv/bin/activate  # Di Windows: venv\Scripts\activate
 pip install -r requirements.txt
 
 # 4. Jalankan aplikasi
-python main.py
+python main.py --help
 ```
 
 ---
 
-📝 Panduan Penggunaan (Rencana)
+## 📝 Panduan Penggunaan CLI
 
-1. Pindai Jaringan WiFi
-   Aplikasi akan menampilkan semua jaringan WiFi di sekitar beserta nilai RSSI-nya.
-2. Pilih SSID Target
-   Masukkan nama WiFi (SSID) yang ingin Anda petakan.
-3. Kumpulkan Titik Data
-   Berjalanlah di sekitar ruangan sambil merekam posisi (koordinat X,Y dalam meter) dan kekuatan sinyal secara manual.
-4. Hasilkan Visualisasi
-   · Peta Panas 2D menunjukkan distribusi sinyal
-   · Permukaan 3D menunjukkan medan frekuensi
-5. Simpan & Ekspor
-   Data secara otomatis disimpan ke database SQLite untuk referensi di masa mendatang.
+### Melihat Bantuan
 
----
-
-📸 Contoh Output (Akan Ditambahkan)
-
-Peta Panas 2D
-
-[Tangkapan layar peta panas akan ditambahkan setelah implementasi]
-
-Permukaan 3D
-
-[Tangkapan layar visualisasi 3D akan ditambahkan setelah implementasi]
-
----
-
-📋 Daftar Dependency (requirements.txt)
-
-```
-numpy>=1.24.0
-scipy>=1.10.0
-matplotlib>=3.7.0
-seaborn>=0.12.0
-plotly>=5.14.0
-pyvista>=0.40.0
-pywifiscan>=1.0.0
-pandas>=2.0.0
+```bash
+python main.py --help
+python main.py scan --help
+python main.py visualize --help
 ```
 
+### Memindai Jaringan WiFi
+
+```bash
+# Pindai semua jaringan WiFi di sekitar
+python main.py scan
+
+# Pindai dengan SSID spesifik
+python main.py scan --ssid MyWiFi
+
+# Simpan hasil scan ke file
+python main.py scan --output scan_results.csv
+```
+
+### Visualisasi Data dari File CSV
+
+```bash
+# Generate heatmap 2D dari data sample
+python main.py visualize data/sample_measurements.csv --type heatmap
+
+# Generate 3D surface
+python main.py visualize data/sample_measurements.csv --type surface
+
+# Generate heatmap dengan resolusi grid lebih tinggi
+python main.py visualize data/sample_measurements.csv --type heatmap --resolution 100
+
+# Generate dengan parameter IDW yang berbeda
+python main.py visualize data/sample_measurements.csv --type heatmap --power 3 --k 8
+
+# Generate semua jenis visualisasi sekaligus
+python main.py visualize data/sample_measurements.csv --type all
+
+# Tentukan nama file output
+python main.py visualize data/sample_measurements.csv --type heatmap --output my_heatmap.png
+```
+
+### Mengelola Database
+
+```bash
+# Lihat statistik database
+python main.py db-stats
+```
+
+### Contoh Sederhana
+
+```bash
+# Langsung generate heatmap dari sample data
+python main.py visualize data/sample_measurements.csv --type all
+```
+
+Output akan tersimpan di folder `output/`:
+- `output/heatmap_15points.png` — Peta panas 2D
+- `output/surface_3d_50x50.png` — Permukaan 3D static
+- `output/surface_3d_interactive_50x50.html` — Permukaan 3D interaktif
+
 ---
 
-🗺️ Peta Jalan (Roadmap)
+## 📊 Contoh Output
 
-Fase Status
-Konsep & Ideasi ✅ Selesai
-Desain Algoritma IDW ✅ Selesai
-Implementasi Python (dasar) 🔄 Sedang Berjalan
-Porting ke Flutter (Mobile) 📋 Direncanakan
-Mode Rekam Jalan Langsung 📋 Direncanakan
-Pengajuan Paten / Hak Cipta 📋 Direncanakan
+### Peta Panas 2D
+
+Peta panas menunjukkan distribusi kekuatan sinyal WiFi di suatu area:
+- **Merah** = Sinyal kuat (RSSI tinggi, mendekati -30 dBm)
+- **Biru** = Sinyal lemah (RSSI rendah, mendekati -100 dBm)
+- **Titik hitam** = Lokasi pengukuran dengan nilai RSSI
+- **Garis kontur** = Batas area dengan kekuatan sinyal yang sama
+
+### Permukaan 3D
+
+Visualisasi 3D menunjukkan "medan frekuensi":
+- **Puncak** = Area dengan sinyal terbaik
+- **Lembah** = Area dengan sinyal terburuk
+- Dapat diputar dan diperbesar (versi interaktif Plotly HTML)
 
 ---
 
-🤝 Kontribusi
+## 🗺️ Peta Jalan (Roadmap)
+
+| Fase | Status |
+|------|--------|
+| Konsep & Ideasi | ✅ Selesai |
+| Desain Algoritma IDW | ✅ Selesai |
+| Implementasi Python (dasar) | ✅ Selesai |
+| Implementasi Python (lengkap) | ✅ Selesai |
+| Testing & Dokumentasi | 🔄 Sedang Berjalan |
+| Porting ke Flutter (Mobile) | 📋 Direncanakan |
+| Mode Rekam Jalan Langsung | 📋 Direncanakan |
+| Pengajuan Paten / Hak Cipta | 📋 Direncanakan |
+
+---
+
+## 🤝 Kontribusi
 
 Proyek ini saat ini sedang dalam pengembangan awal oleh pencipta. Untuk pertanyaan atau kolaborasi, silakan hubungi:
 
-Asmaul Asni Subegi, S.Kom – sabayonx@gmail.com
+**Asmaul Asni Subegi, S.Kom** – sabayonx@gmail.com
 
 ---
 
-📜 Lisensi
+## 📜 Lisensi
 
 Hak Cipta (c) 2026 Asmaul Asni Subegi, S.Kom
 
@@ -229,8 +283,9 @@ Proyek ini dilisensikan di bawah Lisensi MIT - lihat file LICENSE untuk detail l
 
 ---
 
-📧 Kontak
+## 📧 Kontak
 
-Platform Link / Info
-Email sabayonx@gmail.com
-GitHub github.com/xdr7
+| Platform | Link / Info |
+|----------|-------------|
+| Email | sabayonx@gmail.com |
+| GitHub | github.com/xdr7 |

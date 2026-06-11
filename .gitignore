@@ -27,6 +27,7 @@ venv.bak/
 *.sqlite3
 measurements.json
 *.csv
+!data/sample_measurements.csv
 
 # Visualisasi output
 *.png
