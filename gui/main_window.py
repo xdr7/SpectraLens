@@ -15,7 +15,7 @@ from datetime import datetime
 from PyQt5.QtWidgets import (
     QMainWindow, QWidget, QVBoxLayout, QHBoxLayout,
     QTabWidget, QPushButton, QLabel, QTextEdit, QFileDialog,
-    QMessageBox, QGroupBox, QGridLayout, QSpinBox,
+    QMessageBox, QGroupBox, QGridLayout, QSpinBox, QDoubleSpinBox,
     QStatusBar, QAction, QToolBar,
     QTableWidget, QTableWidgetItem, QHeaderView,
     QProgressBar, QSplitter, QApplication
@@ -187,6 +187,7 @@ class SpectraLensGUI(QMainWindow):
         self._create_scanner_tab()
         self._create_visualization_tab()
         self._create_data_tab()
+        self._create_recording_tab()
         self._create_realtime_tab()
         self._create_spectrum_tab()
         self._create_propagation_tab()
@@ -1071,6 +1072,381 @@ class SpectraLensGUI(QMainWindow):
             self.data_table.setItem(i, 2, QTableWidgetItem(str(point[2])))
             self.data_table.setItem(i, 3, QTableWidgetItem(str(point[3])))
     
+    # =====================================================================
+    # RECORDING TAB (Mode Rekam Jalan Langsung)
+    # =====================================================================
+    def _create_recording_tab(self):
+        """Create the live recording tab for walk-around data collection."""
+        tab = QWidget()
+        layout = QVBoxLayout(tab)
+        layout.setSpacing(8)
+
+        # Recording state
+        self.recording_active = False
+        self.recording_points = []
+        self.recording_path_x = []
+        self.recording_path_y = []
+        self.recording_timer = QTimer()
+        self.recording_timer.timeout.connect(self._recording_step)
+        self.recording_position = [0, 0]
+        self.recording_step_size = 1.0
+
+        # Control bar
+        control_bar = QHBoxLayout()
+
+        self.btn_record = QPushButton("Start Recording")
+        self.btn_record.setMinimumHeight(40)
+        self.btn_record.setFont(QFont("Segoe UI", 11))
+        self.btn_record.setStyleSheet("font-weight: bold; background-color: #cc3333;")
+        self.btn_record.clicked.connect(self._toggle_recording)
+        control_bar.addWidget(self.btn_record)
+
+        self.btn_record_export = QPushButton("Export Recording")
+        self.btn_record_export.setMinimumHeight(35)
+        self.btn_record_export.clicked.connect(self._export_recording)
+        control_bar.addWidget(self.btn_record_export)
+
+        self.btn_record_clear = QPushButton("Clear Recording")
+        self.btn_record_clear.setMinimumHeight(35)
+        self.btn_record_clear.setStyleSheet("background-color: #666;")
+        self.btn_record_clear.clicked.connect(self._clear_recording)
+        control_bar.addWidget(self.btn_record_clear)
+
+        control_bar.addStretch()
+
+        # Position controls
+        pos_group = QGroupBox("Position Control")
+        pos_layout = QHBoxLayout(pos_group)
+
+        pos_layout.addWidget(QLabel("X:"))
+        self.record_spin_x = QSpinBox()
+        self.record_spin_x.setRange(-100, 100)
+        self.record_spin_x.setValue(0)
+        pos_layout.addWidget(self.record_spin_x)
+
+        pos_layout.addWidget(QLabel("Y:"))
+        self.record_spin_y = QSpinBox()
+        self.record_spin_y.setRange(-100, 100)
+        self.record_spin_y.setValue(0)
+        pos_layout.addWidget(self.record_spin_y)
+
+        self.btn_set_pos = QPushButton("Set Position")
+        self.btn_set_pos.setMinimumHeight(30)
+        self.btn_set_pos.clicked.connect(self._set_recording_position)
+        pos_layout.addWidget(self.btn_set_pos)
+
+        pos_layout.addWidget(QLabel("Step (m):"))
+        self.record_step_spin = QDoubleSpinBox()
+        self.record_step_spin.setRange(0.1, 10.0)
+        self.record_step_spin.setValue(1.0)
+        self.record_step_spin.setSingleStep(0.1)
+        pos_layout.addWidget(self.record_step_spin)
+
+        control_bar.addWidget(pos_group)
+
+        layout.addLayout(control_bar)
+
+        # Status bar for recording
+        record_status = QHBoxLayout()
+
+        self.lbl_record_status = QLabel("Status: Idle")
+        self.lbl_record_status.setFont(QFont("Segoe UI", 10))
+        self.lbl_record_status.setStyleSheet("color: #888; font-weight: bold;")
+        record_status.addWidget(self.lbl_record_status)
+
+        self.lbl_record_count = QLabel("Points: 0")
+        self.lbl_record_count.setFont(QFont("Segoe UI", 10))
+        record_status.addWidget(self.lbl_record_count)
+
+        self.lbl_record_pos = QLabel("Position: (0, 0)")
+        self.lbl_record_pos.setFont(QFont("Segoe UI", 10))
+        record_status.addWidget(self.lbl_record_pos)
+
+        self.lbl_record_signal = QLabel("Signal: N/A")
+        self.lbl_record_signal.setFont(QFont("Segoe UI", 10))
+        record_status.addWidget(self.lbl_record_signal)
+
+        record_status.addStretch()
+
+        layout.addLayout(record_status)
+
+        # Splitter: canvas (left) + table (right)
+        splitter = QSplitter(Qt.Horizontal)
+
+        # LEFT: Recording canvas with path visualization
+        canvas_widget = QWidget()
+        canvas_layout = QVBoxLayout(canvas_widget)
+        canvas_layout.setContentsMargins(0, 0, 0, 0)
+
+        canvas_label = QLabel("Recording Path & Signal Map")
+        canvas_label.setFont(QFont("Segoe UI", 10))
+        canvas_label.setStyleSheet("font-weight: bold;")
+        canvas_layout.addWidget(canvas_label)
+
+        self.record_canvas = MplCanvas(self, width=8, height=5, dpi=100)
+        self.record_canvas.fig.patch.set_facecolor('#2a2a2a')
+        self.record_ax = self.record_canvas.fig.add_subplot(111)
+        self.record_ax.set_facecolor('#1e1e1e')
+        self.record_ax.tick_params(colors='#aaa')
+        self.record_ax.xaxis.label.set_color('#aaa')
+        self.record_ax.yaxis.label.set_color('#aaa')
+        self.record_ax.title.set_color('#ddd')
+        for spine in self.record_ax.spines.values():
+            spine.set_color('#444')
+        self.record_ax.set_xlabel('X Position (meters)')
+        self.record_ax.set_ylabel('Y Position (meters)')
+        self.record_ax.set_title('Live Recording - Walk Path')
+        self.record_ax.set_xlim(-15, 15)
+        self.record_ax.set_ylim(-15, 15)
+        self.record_ax.grid(True, alpha=0.15, linestyle='--', color='#555')
+        self.record_ax.text(0.5, 0.5, 'Set position and click "Start Recording"\nto begin walk-around data collection',
+                           ha='center', va='center', color='#666', fontsize=12,
+                           transform=self.record_ax.transAxes)
+        canvas_layout.addWidget(self.record_canvas)
+
+        splitter.addWidget(canvas_widget)
+
+        # RIGHT: Recording data table
+        table_widget = QWidget()
+        table_layout = QVBoxLayout(table_widget)
+        table_layout.setContentsMargins(0, 0, 0, 0)
+
+        table_label = QLabel("Recorded Points")
+        table_label.setFont(QFont("Segoe UI", 10))
+        table_label.setStyleSheet("font-weight: bold;")
+        table_layout.addWidget(table_label)
+
+        self.record_table = QTableWidget()
+        self.record_table.setColumnCount(5)
+        self.record_table.setHorizontalHeaderLabels(["X", "Y", "Signal (dBm)", "SSID", "Channel"])
+        header = self.record_table.horizontalHeader()
+        header.setStretchLastSection(True)
+        header.setSectionResizeMode(0, QHeaderView.Stretch)
+        self.record_table.setSelectionBehavior(QTableWidget.SelectRows)
+        self.record_table.setAlternatingRowColors(True)
+        self.record_table.setEditTriggers(QTableWidget.NoEditTriggers)
+        table_layout.addWidget(self.record_table)
+
+        splitter.addWidget(table_widget)
+        splitter.setSizes([700, 300])
+
+        layout.addWidget(splitter)
+
+        self.tabs.addTab(tab, "Recording")
+
+    def _toggle_recording(self):
+        """Toggle recording on/off."""
+        if self.recording_active:
+            # Stop recording
+            self.recording_active = False
+            self.recording_timer.stop()
+            self.btn_record.setText("Start Recording")
+            self.btn_record.setStyleSheet("font-weight: bold; background-color: #cc3333;")
+            self.lbl_record_status.setText("Status: Stopped")
+            self.lbl_record_status.setStyleSheet("color: #888; font-weight: bold;")
+            self.statusBar().showMessage("Recording stopped. " + str(len(self.recording_points)) + " points collected", 5000)
+        else:
+            # Start recording
+            self.recording_active = True
+            self.recording_step_size = self.record_step_spin.value()
+            interval = 3000  # 3 seconds between scans
+            self.recording_timer.start(interval)
+            self.btn_record.setText("Stop Recording")
+            self.btn_record.setStyleSheet("font-weight: bold; background-color: #008800;")
+            self.lbl_record_status.setText("Status: Recording...")
+            self.lbl_record_status.setStyleSheet("color: #00cc00; font-weight: bold;")
+            self.statusBar().showMessage("Recording started - move to new positions and recording will auto-scan", 5000)
+
+    def _set_recording_position(self):
+        """Manually set the current recording position."""
+        x = self.record_spin_x.value()
+        y = self.record_spin_y.value()
+        self.recording_position = [float(x), float(y)]
+        self.lbl_record_pos.setText("Position: (" + str(x) + ", " + str(y) + ")")
+        self._update_recording_canvas()
+        self.statusBar().showMessage("Position set to (" + str(x) + ", " + str(y) + ")", 3000)
+
+    def _recording_step(self):
+        """Perform one recording step: scan WiFi at current position."""
+        x, y = self.recording_position
+        self.statusBar().showMessage("Recording at position (" + str(x) + ", " + str(y) + ")...")
+
+        try:
+            networks = self.scanner.scan()
+
+            if networks:
+                # Find strongest network
+                strongest = max(networks, key=lambda n: n.get('rssi', -100))
+                ssid = strongest.get('ssid', 'Unknown')
+                rssi = strongest.get('rssi', -100)
+                channel = strongest.get('channel', 0)
+
+                # Record the point
+                self.recording_points.append((x, y, rssi, ssid, channel))
+                self.measurement_points.append((x, y, rssi, ssid, channel))
+
+                # Update UI
+                self._update_recording_table()
+                self._update_recording_canvas()
+                self.lbl_record_count.setText("Points: " + str(len(self.recording_points)))
+                self.lbl_record_signal.setText("Signal: " + str(rssi) + " dBm (" + ssid[:15] + ")")
+                self.lbl_record_signal.setStyleSheet("color: " + self._rssi_to_hex_color(rssi) + ";")
+
+                # Auto-increment position for next step
+                self.recording_position[0] += self.recording_step_size
+                self.record_spin_x.setValue(int(round(self.recording_position[0])))
+                self.lbl_record_pos.setText("Position: (" + str(int(round(self.recording_position[0]))) + ", " + str(int(round(self.recording_position[1]))) + ")")
+
+                self.statusBar().showMessage("Recorded: (" + str(x) + ", " + str(y) + ") = " + str(rssi) + " dBm", 3000)
+            else:
+                self.statusBar().showMessage("No networks found at position (" + str(x) + ", " + str(y) + ")", 3000)
+
+        except Exception as e:
+            self.statusBar().showMessage("Recording error: " + str(e))
+
+    def _update_recording_canvas(self):
+        """Update the recording canvas with path and signal data."""
+        self.record_ax.clear()
+        self.record_ax.set_facecolor('#1e1e1e')
+
+        if not self.recording_points:
+            self.record_ax.set_xlim(-15, 15)
+            self.record_ax.set_ylim(-15, 15)
+            self.record_ax.set_xlabel('X Position (meters)', color='#aaa')
+            self.record_ax.set_ylabel('Y Position (meters)', color='#aaa')
+            self.record_ax.set_title('Live Recording - Walk Path', color='#ddd', fontweight='bold')
+            self.record_ax.grid(True, alpha=0.15, linestyle='--', color='#555')
+            self.record_ax.text(0.5, 0.5, 'Start recording to collect data points',
+                               ha='center', va='center', color='#666', fontsize=12,
+                               transform=self.record_ax.transAxes)
+            for spine in self.record_ax.spines.values():
+                spine.set_color('#444')
+            self.record_ax.tick_params(colors='#aaa')
+            self.record_canvas.draw()
+            return
+
+        # Extract data
+        xs = [p[0] for p in self.recording_points]
+        ys = [p[1] for p in self.recording_points]
+        signals = [p[2] for p in self.recording_points]
+
+        # Plot path line
+        self.record_ax.plot(xs, ys, '-', color='#00b4d8', linewidth=2, alpha=0.7, label='Walk Path')
+
+        # Plot points colored by signal
+        scatter = self.record_ax.scatter(xs, ys, c=signals, cmap='RdYlBu_r',
+                                        s=120, edgecolors='black', linewidth=1,
+                                        vmin=-100, vmax=-30, zorder=5)
+
+        # Add signal labels
+        for i, (x, y, s) in enumerate(zip(xs, ys, signals)):
+            self.record_ax.annotate(f'{s:.0f}', (x, y),
+                                   xytext=(3, 3), textcoords='offset points',
+                                   fontsize=8, fontweight='bold',
+                                   bbox=dict(boxstyle='round,pad=0.2',
+                                           facecolor='white', alpha=0.7))
+
+        # Mark start and end
+        if len(self.recording_points) > 0:
+            sx, sy = xs[0], ys[0]
+            self.record_ax.plot(sx, sy, 'o', color='green', markersize=12,
+                               markeredgecolor='white', markeredgewidth=2, zorder=10)
+            self.record_ax.text(sx, sy - 1.5, 'Start', ha='center', va='top',
+                               fontsize=9, fontweight='bold', color='green')
+
+        if len(self.recording_points) > 1:
+            ex, ey = xs[-1], ys[-1]
+            self.record_ax.plot(ex, ey, 's', color='red', markersize=12,
+                               markeredgecolor='white', markeredgewidth=2, zorder=10)
+            self.record_ax.text(ex, ey + 1.5, 'Current', ha='center', va='bottom',
+                               fontsize=9, fontweight='bold', color='red')
+
+        # Colorbar
+        cbar = self.record_canvas.fig.colorbar(scatter, ax=self.record_ax,
+                                               label='Signal (dBm)', shrink=0.8)
+        cbar.ax.yaxis.label.set_color('#aaa')
+        cbar.ax.tick_params(colors='#aaa')
+
+        # Auto-adjust limits with padding
+        all_x = xs + [self.recording_position[0]]
+        all_y = ys + [self.recording_position[1]]
+        x_min, x_max = min(all_x) - 2, max(all_x) + 2
+        y_min, y_max = min(all_y) - 2, max(all_y) + 2
+        x_range = max(x_max - x_min, 10)
+        y_range = max(y_max - y_min, 10)
+        x_center = (x_min + x_max) / 2
+        y_center = (y_min + y_max) / 2
+        half_range = max(x_range, y_range) / 2
+        self.record_ax.set_xlim(x_center - half_range, x_center + half_range)
+        self.record_ax.set_ylim(y_center - half_range, y_center + half_range)
+
+        self.record_ax.set_xlabel('X Position (meters)', color='#aaa')
+        self.record_ax.set_ylabel('Y Position (meters)', color='#aaa')
+        self.record_ax.set_title('Live Recording - Walk Path', color='#ddd', fontweight='bold')
+        self.record_ax.grid(True, alpha=0.15, linestyle='--', color='#555')
+        self.record_ax.legend(loc='upper right', fontsize=8, facecolor='#2a2a2a',
+                             edgecolor='#444', labelcolor='#ddd')
+
+        for spine in self.record_ax.spines.values():
+            spine.set_color('#444')
+        self.record_ax.tick_params(colors='#aaa')
+        self.record_canvas.draw()
+
+    def _update_recording_table(self):
+        """Update the recording data table."""
+        self.record_table.setRowCount(len(self.recording_points))
+        for i, point in enumerate(self.recording_points):
+            self.record_table.setItem(i, 0, QTableWidgetItem(str(point[0])))
+            self.record_table.setItem(i, 1, QTableWidgetItem(str(point[1])))
+            signal_item = QTableWidgetItem(str(point[2]))
+            signal_item.setForeground(self._signal_color(point[2]))
+            self.record_table.setItem(i, 2, signal_item)
+            self.record_table.setItem(i, 3, QTableWidgetItem(str(point[3])))
+            self.record_table.setItem(i, 4, QTableWidgetItem(str(point[4])))
+
+    def _export_recording(self):
+        """Export recording data to CSV."""
+        if not self.recording_points:
+            QMessageBox.warning(self, "No Data", "No recording data to export.")
+            return
+
+        filepath, _ = QFileDialog.getSaveFileName(
+            self, "Export Recording", "recording.csv", "CSV Files (*.csv);;All Files (*)")
+
+        if not filepath:
+            return
+
+        try:
+            import csv
+            with open(filepath, 'w', newline='') as f:
+                writer = csv.writer(f)
+                writer.writerow(['x', 'y', 'signal', 'ssid', 'channel'])
+                for point in self.recording_points:
+                    writer.writerow(point)
+
+            self.statusBar().showMessage("Exported " + str(len(self.recording_points)) + " recording points to " + filepath, 5000)
+
+        except Exception as e:
+            QMessageBox.warning(self, "Export Error", "Failed to export recording:\n" + str(e))
+
+    def _clear_recording(self):
+        """Clear all recording data."""
+        reply = QMessageBox.question(self, "Clear Recording",
+            "Clear all recording data?\n\nThis will not affect other data points.",
+            QMessageBox.Yes | QMessageBox.No)
+
+        if reply == QMessageBox.Yes:
+            self.recording_points = []
+            self.recording_position = [0, 0]
+            self.record_spin_x.setValue(0)
+            self.record_spin_y.setValue(0)
+            self.record_table.setRowCount(0)
+            self.lbl_record_count.setText("Points: 0")
+            self.lbl_record_pos.setText("Position: (0, 0)")
+            self.lbl_record_signal.setText("Signal: N/A")
+            self._update_recording_canvas()
+            self.statusBar().showMessage("Recording data cleared", 3000)
+
     # =====================================================================
     # REALTIME TAB
     # =====================================================================

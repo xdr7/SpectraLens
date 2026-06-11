@@ -25,6 +25,8 @@ venv.bak/
 *.db
 *.sqlite
 *.sqlite3
+*.db-shm
+*.db-wal
 measurements.json
 *.csv
 !data/sample_measurements.csv
@@ -51,6 +53,9 @@ logs/
 ehthumbs.db
 Thumbs.db
 *.bak
+
+# Flutter SDK zip
+flutter_windows_*.zip
 
 # Project specific
 config_local.py

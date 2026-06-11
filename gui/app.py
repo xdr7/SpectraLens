@@ -9,14 +9,13 @@ Email   : sabayonx@gmail.com
 
 import sys
 import os
+import signal
 
 # Add project root to path
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from PyQt5.QtWidgets import QApplication
 from gui.main_window import SpectraLensGUI
-
-
 
 
 def run_app():
@@ -26,10 +25,14 @@ def run_app():
     app.setApplicationVersion("1.0.0")
     app.setOrganizationName("SpectraLens")
 
+    # Handle Ctrl+C gracefully
+    signal.signal(signal.SIGINT, signal.SIG_DFL)
+
     window = SpectraLensGUI()
     window.show()
 
-    sys.exit(app.exec_())
+    exit_code = app.exec_()
+    sys.exit(exit_code)
 
 
 if __name__ == "__main__":
